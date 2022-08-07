@@ -1,0 +1,28 @@
+---
+  key_url:  https://packages.cloud.google.com/apt/doc/apt-key.gpg
+  k8_repo:  "deb https://apt.kubernetes.io/ kubernetes-xenial main"
+  packages:
+    - curl
+    - wget
+    - kubeadm=1.24.3-00
+    - kubelet=1.24.3-00
+    - kubectl=1.24.3-00
+    - cotnainerd
+    - apt-transport-https
+    - ca-certificates
+
+  cni_pkg:  kubernetes-cni
+  kern_mods:
+    - overlay
+    - br_netfilter
+  kern_config_files:
+    - name: k8conf
+      src:  k8.conf
+      dest: /etc/sysctl/k8.conf
+    - name: containerd
+      src:  containerd.conf
+      dest: /etc/sysctl/containerd.conf
+  containerd_config_dir:  /etc/containerd
+  k8_version: v1.24.3
+  pod_network:  10.244.0.0/16
+  user_home:  "/home/ubuntu"

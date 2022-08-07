@@ -1,6 +1,6 @@
 ---
 - name: Playbook to configure VMs/hosts with changes required to be a kubernetes node
-  hosts:  nodes
+  hosts:  all
   tasks:
     - name: Adding key and repo
       apt_key:
@@ -15,6 +15,13 @@
         name: "{{ packages }}"
         update_cache: yes
         cache_valid_time: 3600
+
+    - name: Installing CNI on master node
+      apt:
+        name: "{{ cni_pkg }}"
+        update_cache: yes
+        cache_valid_time: 3600
+      when: inventory_hostname in groups['master_node']
     
     - name: Backup fstab and disable swap
       lineinfile:
@@ -30,7 +37,7 @@
         state:  present
       with_items: "{{ kern_mods }}"
 
-    - name: More kernel modifications
+    - name: Creating kernel system config files
       copy:
         src:  "{{ item.src }}"
         dest: "{{ item.dest }}"
@@ -53,7 +60,42 @@
         name: kubelet
         state:  started
         enabled:  yes
+
+    - name: Initialize Controlplane components
+      shell:
+        cmd:  "sudo kubeadm config images pull --cri-socket unix:///run/containerd/containerd.sock --kubernetes-version {{ k8_version }}"
+      when: inventory_hostname in groups['master_node']
       
+    - shell:
+        cmd:  "kubeadm init --pod-network-cidr={{ pod_network }} --upload-certs --kubernetes-version={{ k8_version }}  --control-plane-endpoint=$(hostname) --cri-socket unix:///run/containerd/containerd.sock"
+      register: cmd_out1
+
+    - debug:
+        var:  cmd_out1.stdout_lines
+      when: inventory_hostname in groups['master_node']
+
+    - name: Set kubeconfig location in master node
+      shell:
+        cmd:  "export KUBECONFIG=/etc/kubernetes/admin.conf && echo 'KUBECONFIG=/etc/kubernetes/admin.conf' >> /root/.bashrc"
+      when: inventory_hostname in groups['master_node']
+    - file:
+        name: "{{ user_home }}/.kube"
+        state:  directory
+      become: False
+      when: inventory_hostname in groups['master_node']
+    - copy:
+        src: /etc/kubernetes/admin.conf
+        dest: "{{ user_home }}/.kube/config"
+
+    - name: Print cluster join token
+      shell:
+        cmd:  "kubeadm token create --print-join-command"
+      when: inventory_hostname in groups['master_node']
+      register: token
+
+    
+
+
   handlers:
     - name: load settings from system configuration files
       shell:
