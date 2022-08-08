@@ -26,3 +26,4 @@
   k8_version: v1.24.3
   pod_network:  10.244.0.0/16
   user_home:  "/home/ubuntu"
+  master_node_count:  "{{hostvars[groups['master_node'| length]]}}"

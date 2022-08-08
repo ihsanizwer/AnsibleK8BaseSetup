@@ -93,7 +93,10 @@
       when: inventory_hostname in groups['master_node']
       register: token
 
-    
+    - name: Join worker node with master node
+      shell:
+        cmd:  "{{ token }}"
+      when: master_node_count > 0 and inventory_hostname not in groups['master_node']
 
 
   handlers:
